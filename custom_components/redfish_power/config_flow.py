@@ -39,6 +39,16 @@ class RedfishPowerHub:
             connector=aiohttp.TCPConnector(ssl=False)
         )
 
+    async def close(self) -> None:
+        if not self.session.closed:
+            await self.session.close()
+
+    async def __aenter__(self) -> RedfishPowerHub:
+        return self
+    
+    async def __aexit__(self, *args, **kwargs):
+        await self.close()
+
     async def test_connection(self) -> bool:
         async with self.session.get("/redfish/v1") as resp:
             return (
