@@ -8,8 +8,8 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import UnitOfPower
 from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .const import DOMAIN
 from .config_flow import RedfishPowerHub
