@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-
+import fnmatch
 import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN
@@ -36,31 +36,34 @@ class RedfishPowerHub:
         self.session = aiohttp.ClientSession(
             base_url=f"https://{host}",
             auth=aiohttp.BasicAuth(login=username, password=password),
+            connector=aiohttp.TCPConnector(ssl=False)
         )
 
     async def test_connection(self) -> bool:
-        async with self.session.get("/redfish/v1", verify_ssl=False) as resp:
+        async with self.session.get("/redfish/v1") as resp:
             return (
                 resp.status == 200
-                and (await resp.json())["@odata.type"]
-                == "#ServiceRoot.v1_1_0.ServiceRoot"
+                and fnmatch.fnmatch(
+                    (await resp.json())["@odata.type"],
+                    "#ServiceRoot.v1_?_0.ServiceRoot"
+                    )
             )
 
     async def authenticate(self) -> bool:
         async with self.session.get(
-            "/redfish/v1/Systems/1",
-            verify_ssl=False,
+            "/redfish/v1/Systems/1"
         ) as resp:
             return (
                 resp.status == 200
-                and (await resp.json())["@odata.type"]
-                == "#ComputerSystem.v1_3_0.ComputerSystem"
+                and fnmatch.fnmatch(
+                    (await resp.json())["@odata.type"],
+                    "#ComputerSystem.v1_?_0.ComputerSystem"
+                    )
             )
 
     async def get_device_hostname(self) -> str:
         async with self.session.get(
-            "/redfish/v1/Managers/1/EthernetInterfaces/1",
-            verify_ssl=False,
+            "/redfish/v1/Managers/1/EthernetInterfaces/1"
         ) as resp:
             json_resp = await resp.json()
             if json_resp["HostName"]:
@@ -70,11 +73,10 @@ class RedfishPowerHub:
 
     async def get_power_consumption(self) -> int:
         async with self.session.get(
-            "/redfish/v1/Chassis/1/Power",
-            verify_ssl=False,
+            "/redfish/v1/Chassis/1/Power"
         ) as resp:
             json_resp = await resp.json()
-            return json_resp["PowerControl"][0]["PowerConsumedWatts"]
+            return json_resp["PowerControl"][0]["PowerMetrics"]["AverageConsumedWatts"]
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
@@ -108,7 +110,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
         if user_input is not None:
