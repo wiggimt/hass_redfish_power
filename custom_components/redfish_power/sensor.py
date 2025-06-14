@@ -47,7 +47,7 @@ class RedfishPowerConsumptionSensor(SensorEntity):
     def __init__(self, entity_id: str, hub: RedfishPowerHub) -> None:
         self.entity_id = entity_id
         self.hub = hub
-        self._attr_unique_id = f"{hub.host}_power_consumption"
+        self._attr_unique_id = f"{hub.get_device_hostname()}_power_consumption"
 
     _attr_name = "Power Consumption"
     _attr_native_unit_of_measurement = UnitOfPower.WATT
